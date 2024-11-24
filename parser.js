@@ -132,11 +132,35 @@ const primaryChecker = (tokens) => {
     throw new Error("A JSON payload should be an object or array, not a string.");
 };
 
+/**
+ * Parses a list of tokens representing a JSON string and returns the parsed result.
+ * Validates the structure of the JSON data during parsing.
+ *
+ * @param {Array<string>} tokens - The tokenized representation of the JSON string. 
+ * Each token is a part of the JSON structure such as `{`, `}`, `:`, `,`, booleans (`true`, `false`), 
+ * numbers, strings, and `null`.
+ * 
+ * @returns {Object|Array|string|number|boolean|null} The parsed result (could be an object, array, string, 
+ * number, boolean, or null).
+ *
+ * @throws {Error} Throws detailed error messages for invalid JSON, such as unexpected tokens, 
+ * missing colons, unexpected commas, trailing commas, mismatched brackets or braces, and exceeding 
+ * nesting depth.
+ */
 const parseStack = (tokens) => {
     let index = 0;
     let depth = 0;
+
+    // Perform primary validation before parsing starts
     primaryChecker(tokens);
 
+    /**
+     * Parses a value based on its token.
+     * 
+     * @returns {Object|Array|string|number|boolean|null} The parsed value, which could be an object, array, 
+     * string, number, boolean, or null.
+     * @throws {Error} Throws an error if the token does not match a valid JSON value.
+     */
     const parseValue = () => {
         const token = tokens[index];
 
@@ -163,6 +187,13 @@ const parseStack = (tokens) => {
         }
     }
 
+    /**
+     * Parses a JSON object (`{}`) and ensures proper key-value pairing, comma placement, and closing braces.
+     * 
+     * @returns {Object} The parsed object.
+     * @throws {Error} Throws errors for invalid object structure such as missing colons, extra commas, or 
+     * trailing commas.
+     */
     const parseObject = () => {
         const obj = {};
         index++; // Skip '{'
@@ -202,6 +233,13 @@ const parseStack = (tokens) => {
         return obj;
     }
 
+    /**
+     * Parses a JSON array (`[]`) and ensures proper value separation, comma placement, and closing brackets.
+     * 
+     * @returns {Array} The parsed array.
+     * @throws {Error} Throws errors for invalid array structure such as missing values, extra commas, or 
+     * trailing commas.
+     */
     const parseArray = () => {
         depth++;
         if (depth >= MAX_DEPTH) {
@@ -244,20 +282,24 @@ const parseStack = (tokens) => {
 
         return arr;
     }
+
+    /**
+     * Parses a JSON string and removes leading/trailing quotes. Handles escape sequences.
+     * 
+     * @returns {string} The parsed string.
+     * @throws {Error} Throws an error if the string is not properly quoted.
+     */
     const parseString = () => {
         let token = tokens[index++];
-        // skip the starting the trailing "
+
+        // skip the starting and trailing quotes
         if (token.charAt(0) === '"' && token.charAt(token.length - 1) === '"') {
-            // Check if the string contains unescaped control characters
-            // const unescapedControlCharRegex = /[^\x20\x09\x0A\x0D\x21\x23-\x5B\x5D\x5E-\x7A\x7E]/;  // Matches unescaped control characters
-            // if (unescapedControlCharRegex.test(token)) {
-            //     throw new Error("Invalid characters in string. Control characters must be escaped.");
-            // }
             const value = token.slice(1, -1).replaceAll("\\", "");
             return value;
         }
         throw new Error('Keys must be quoted');
     }
+
     const result = parseValue();
 
     // Post-parse validation
@@ -269,24 +311,10 @@ const parseStack = (tokens) => {
     if (depth !== 0) {
         throw new Error('Mismatched brackets or braces');
     }
+
     return result;
 }
 
-testCases.forEach(filePath => {
-    try {
-        let data = fs.readFileSync(`./test/${filePath}`, { encoding: 'utf-8', flag: 'r' });
-        // console.log("data is: ", data, typeof data);
-        const stack = generateStack(data);
-        console.log(stack)
-        const result = parseStack(stack);
-        console.log(result)
-
-    } catch (err) {
-        console.log(err);
-
-    }
-
-})
 
 module.exports = {
     generateStack,
