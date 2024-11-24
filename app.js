@@ -7,7 +7,9 @@
 const fs = require('fs');
 
 // const testCases = ['fail1.json', 'fail2.json', 'fail3.json', 'fail4.json', 'fail5.json'];
-const testCases = ['pass4.json'];
+// const testCases = ['fail25.json'];
+const testCases = ['pass1.json', 'pass2.json', 'pass3.json', 'pass4.json', 'pass5.json']
+// const testCases = ['pass1.json']
 
 const structuralToken = ["{", "}", "[", "]", ":", ","];
 const whitespaces = ["\t", "\n", "\r", " "];
@@ -31,7 +33,7 @@ const generateStack = (data) => {
 
     for (let i = 0; i < data.length; i++) {
         let element = data.charAt(i);
-        console.log(`i:${i}:${element}:${typeof element}`)
+        // console.log(`i:${i}:${element}:${typeof element}`)
 
         if (whitespaces.includes(element)) {
             if (startValueToken) {
@@ -120,17 +122,147 @@ const generateStack = (data) => {
     return stack;
 };
 
+const parseStack = (tokens) => {
+    let index = 0;
 
-const parseData = (data) => {
-    const stack = generateStack(data);
-    console.log(stack);
+    const parseValue = () => {
+        const token = tokens[index];
+
+        if (token === '{') {
+            return parseObject();
+        } else if (token === '[') {
+            return parseArray();
+        } else if (token === 'true') {
+            index++;
+            return true;
+        } else if (token === 'false') {
+            index++;
+            return false;
+        } else if (token === 'null') {
+            index++;
+            return null;
+        } else if (/^-?(0|[1-9]\d*)(\.\d+)?(e[+-]?\d+)?$/i.test(token)) {
+            index++;
+            return parseFloat(token);
+        } else if (token?.startsWith('"') && token?.endsWith('"')) {
+            return parseString();
+        } else {
+            throw new Error(`Unexpected token: ${token}`);
+        }
+    }
+
+    const parseObject = () => {
+        const obj = {};
+        index++; // Skip '{'
+
+        let expectingKey = true; // Indicates if we are expecting a key (after '{' or ',')
+
+        while (tokens[index] !== '}') {
+            if (expectingKey) {
+                if (tokens[index] === ',') {
+                    throw new Error(`Unexpected comma at position ${index}`);
+                }
+                const key = parseString();
+                if (tokens[index] !== ':') {
+                    throw new Error(`Expected ':' after key at position ${index}`);
+                }
+                index++; // Skip ':'
+                const value = parseValue();
+                obj[key] = value;
+                expectingKey = false; // After a key-value pair, we expect ',' or '}'
+            } else {
+                if (tokens[index] === ',') {
+                    index++; // Skip ','
+                    expectingKey = true; // After a ',', we expect a key
+                } else {
+                    throw new Error(`Expected ',' or '}' at position ${index}, found "${tokens[index]}"`);
+                }
+            }
+        }
+
+        if (expectingKey && Object.keys(obj).length > 0) {
+            // If we are still expecting a key but encountered '}', it's a trailing comma
+            throw new Error(`Trailing comma in object at position ${index}`);
+        }
+
+        index++; // Skip '}'
+        return obj;
+    }
+
+    const parseArray = () => {
+        const arr = [];
+        index++; // Skip '['
+
+        let expectingValue = true;
+
+        while (tokens[index] !== ']') {
+            if (expectingValue) {
+                if (tokens[index] === ',') {
+                    throw new Error(`Unexpected comma at position ${index}`);
+                }
+                arr.push(parseValue());
+                expectingValue = false; // After a value, we expect either ',' or ']'
+            } else {
+                if (tokens[index] === ',') {
+                    index++; // Skip ','
+                    expectingValue = true; // After a ',', we expect a value
+                } else {
+                    throw new Error(`Expected ',' or ']' at position ${index}, found "${tokens[index]}"`);
+                }
+            }
+        }
+
+        if (expectingValue && arr.length > 0) {
+            // If we are still expecting a value but encountered ']', it's a trailing comma
+            throw new Error(`Trailing comma in array at position ${index}`);
+        }
+
+        index++; // Skip ']'
+
+        // Check for consecutive closing brackets (]])
+        if (tokens[index] === ']') {
+            throw new Error(`Unexpected closing bracket ']' at position ${index}`);
+        }
+
+        return arr;
+    }
+    const parseString = () => {
+        let token = tokens[index++];
+        // skip the starting the trailing "
+        if (token.charAt(0) === '"' && token.charAt(token.length - 1) === '"') {
+            // Check if the string contains unescaped control characters
+            // const unescapedControlCharRegex = /[^\x20\x09\x0A\x0D\x21\x23-\x5B\x5D\x5E-\x7A\x7E]/;  // Matches unescaped control characters
+            // if (unescapedControlCharRegex.test(token)) {
+            //     throw new Error("Invalid characters in string. Control characters must be escaped.");
+            // }
+            const value = token.slice(1, -1).replaceAll("\\", "");
+            return value;
+        }
+        throw new Error('Keys must be quoted');
+    }
+    const result = parseValue();
+
+    // Post-parse validation
+    if (index < tokens.length) {
+        throw new Error(`Unexpected token after root value at position ${index}: ${tokens[index]}`);
+    }
+
+    return result;
 }
 
 testCases.forEach(filePath => {
+    try {
+        let data = fs.readFileSync(`./test/${filePath}`, { encoding: 'utf-8', flag: 'r' });
+        // console.log("data is: ", data, typeof data);
+        const stack = generateStack(data);
+        console.log(stack)
+        const result = parseStack(stack);
+        console.log(result)
 
-    let data = fs.readFileSync(`./test/${filePath}`, { encoding: 'utf-8', flag: 'r' });
-    // console.log("data is: ", data, typeof data);
-    parseData(data);
+    } catch (err) {
+        console.log(err);
+
+    }
 
 })
 
