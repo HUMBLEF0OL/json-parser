@@ -1,0 +1,14 @@
+{
+  "name": "json-parser",
+  "version": "1.0.0",
+  "description": "A simple script for checking the json data",
+  "main": "script.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "node script.js"
+  },
+  "author": "HUMBLEFOOL",
+  "license": "MIT"
+}

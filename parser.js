@@ -7,9 +7,9 @@
 const fs = require('fs');
 
 // const testCases = ['fail1.json', 'fail2.json', 'fail3.json', 'fail4.json', 'fail5.json'];
-// const testCases = ['fail25.json'];
-const testCases = ['pass1.json', 'pass2.json', 'pass3.json', 'pass4.json', 'pass5.json']
-// const testCases = ['pass1.json']
+const testCases = ['fail1.json'];
+// const testCases = ['pass1.json', 'pass2.json', 'pass3.json', 'pass4.json', 'pass5.json']
+// const testCases = ['pass2.json']
 
 const structuralToken = ["{", "}", "[", "]", ":", ","];
 const whitespaces = ["\t", "\n", "\r", " "];
@@ -23,6 +23,7 @@ const escapeMap = {
     '\"': '\"',
     '/': '/'
 };
+const MAX_DEPTH = 20;
 
 const generateStack = (data) => {
     let stack = [];
@@ -122,8 +123,19 @@ const generateStack = (data) => {
     return stack;
 };
 
+const primaryChecker = (tokens) => {
+    if (tokens[0] === '{' || tokens[0] === '[') {
+        return true;  // Proceed with parsing
+    }
+
+    // Throw an error if the first token is not an object or array
+    throw new Error("A JSON payload should be an object or array, not a string.");
+};
+
 const parseStack = (tokens) => {
     let index = 0;
+    let depth = 0;
+    primaryChecker(tokens);
 
     const parseValue = () => {
         const token = tokens[index];
@@ -186,10 +198,15 @@ const parseStack = (tokens) => {
         }
 
         index++; // Skip '}'
+
         return obj;
     }
 
     const parseArray = () => {
+        depth++;
+        if (depth >= MAX_DEPTH) {
+            throw new Error(`Maximum nesting depth of ${MAX_DEPTH} exceeded`);
+        }
         const arr = [];
         index++; // Skip '['
 
@@ -218,9 +235,10 @@ const parseStack = (tokens) => {
         }
 
         index++; // Skip ']'
+        depth--;
 
-        // Check for consecutive closing brackets (]])
-        if (tokens[index] === ']') {
+        // Check for invalid closing brackets
+        if (depth < 0) {
             throw new Error(`Unexpected closing bracket ']' at position ${index}`);
         }
 
@@ -247,6 +265,10 @@ const parseStack = (tokens) => {
         throw new Error(`Unexpected token after root value at position ${index}: ${tokens[index]}`);
     }
 
+    // Final depth check
+    if (depth !== 0) {
+        throw new Error('Mismatched brackets or braces');
+    }
     return result;
 }
 
@@ -266,3 +288,7 @@ testCases.forEach(filePath => {
 
 })
 
+module.exports = {
+    generateStack,
+    parseStack
+}
