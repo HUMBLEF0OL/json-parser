@@ -3,5 +3,11 @@
         1,
         "value"
     ],
-    "key2": 235
+    "key2": 235e12,
+    "key3": "this\"hello\"              ",
+    "key4": "test\u0024\"",
+    "key5": "\n",
+    "key6": -123e23,
+    "key7": "this,",
+    "key8": "\\\\"
 }
