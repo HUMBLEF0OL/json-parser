@@ -1,0 +1,32 @@
+# Node.js
+node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependency directories
+jspm_packages/
+
+# Environment variables
+.env
+
+# Build outputs
+/dist
+/build
+
+# IDEs and text editors
+.vscode/
+.idea/
+.DS_Store
+
+# Operating system files
+Thumbs.db
+Desktop.ini
+
+# Coverage
+coverage/
+
+# Misc
+*.tgz

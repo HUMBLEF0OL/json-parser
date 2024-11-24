@@ -4,13 +4,6 @@
  * return result
  */
 
-const fs = require('fs');
-
-// const testCases = ['fail1.json', 'fail2.json', 'fail3.json', 'fail4.json', 'fail5.json'];
-const testCases = ['fail1.json'];
-// const testCases = ['pass1.json', 'pass2.json', 'pass3.json', 'pass4.json', 'pass5.json']
-// const testCases = ['pass2.json']
-
 const structuralToken = ["{", "}", "[", "]", ":", ","];
 const whitespaces = ["\t", "\n", "\r", " "];
 const escapeMap = {
