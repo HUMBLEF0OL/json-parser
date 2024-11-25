@@ -17,61 +17,77 @@ const escapeMap = {
     '/': '/'
 };
 const MAX_DEPTH = 20;
-
+/**
+ * Generates a stack of tokens from a JSON-like string input. 
+ * This function tokenizes the input by identifying structural tokens, strings, numbers, 
+ * and handling escape sequences within string values.
+ *
+ * @param {string} data - The JSON-like string to tokenize.
+ * @returns {string[]} - An array of tokens representing the JSON structure.
+ *
+ * @throws {Error} If there is an invalid escape sequence, incomplete Unicode escape, or an unterminated string.
+ *
+ * @example
+ * // Example usage:
+ * const input = '{"key": "value", "array": [1, 2, 3]}';
+ * const tokens = generateStack(input);
+ * console.log(tokens);
+ * // Output:
+ * // ['{', '"key"', ':', '"value"', ',', '"array"', ':', '[', '1', ',', '2', ',', '3', ']', '}']
+ */
 const generateStack = (data) => {
-    let stack = [];
-    let valueToken = "";
-    let startValueToken = false;
-    let isEscaped = false;
-
+    let stack = []; // Array to store parsed tokens.
+    let valueToken = ""; // Accumulates current token value.
+    let startValueToken = false; // Flag to indicate if a value token is being processed.
+    let isEscaped = false; // Tracks if the current character is part of an escape sequence.
 
     for (let i = 0; i < data.length; i++) {
-        let element = data.charAt(i);
-        // console.log(`i:${i}:${element}:${typeof element}`)
+        let element = data.charAt(i); // Current character in the input.
 
+        // Handle whitespace outside of string tokens.
         if (whitespaces.includes(element)) {
             if (startValueToken) {
-                valueToken += element;
+                valueToken += element; // Preserve whitespace within strings.
             }
             continue;
         }
 
+        // Handle structural tokens (e.g., `{`, `}`, `[`, `]`, `,`, `:`).
         else if (structuralToken.includes(element) && !startValueToken) {
-            // structural token may also lie in the value
             if (valueToken) {
-                stack.push(valueToken.trim());
+                stack.push(valueToken.trim()); // Push any pending value token.
                 valueToken = "";
             }
-            stack.push(element);
+            stack.push(element); // Push the structural token.
         }
 
+        // Handle string tokens (starting and ending with `"`).
         else if (element === "\"") {
             if (!startValueToken) {
                 startValueToken = true;
-                valueToken = "\"";
+                valueToken = "\""; // Start a new string token.
             } else if (isEscaped) {
-                valueToken += element;
+                valueToken += element; // Add escaped quote to string.
                 isEscaped = false;
             } else {
                 valueToken += "\"";
-                // Don't combine consecutive strings
-                stack.push(valueToken);
+                stack.push(valueToken); // Push the completed string token.
                 valueToken = "";
                 startValueToken = false;
             }
         }
 
+        // Handle escape sequences (e.g., `\"`, `\\`, `\n`, `\uXXXX`).
         else if (startValueToken && element === "\\") {
-            // Check for escape sequences
             let backslashCount = 0;
             for (let j = i; j >= 0 && data.charAt(j) === "\\"; j--) {
                 backslashCount++;
             }
-
-            isEscaped = backslashCount % 2 !== 0;
-            valueToken += "\\";
+            isEscaped = backslashCount % 2 !== 0; // Escaped if odd number of backslashes.
+            valueToken += "\\"; // Include backslash in the token.
         }
 
+        // Process escaped characters.
         else if (isEscaped) {
             if (element === 'u') {
                 if (data.length < i + 5) {
@@ -82,18 +98,17 @@ const generateStack = (data) => {
                     throw new Error('Invalid Unicode escape sequence');
                 }
                 const unicodeChar = String.fromCharCode(parseInt(sequence, 16));
-                // valueToken = valueToken.slice(0, -1); // Remove the last backslash
-                valueToken += unicodeChar;
-                i += 4;
+                valueToken += unicodeChar; // Add decoded Unicode character.
+                i += 4; // Skip processed Unicode characters.
             } else if (element in escapeMap) {
-                // valueToken = valueToken.slice(0, -1); // Remove the last backslash
-                valueToken += escapeMap[element];
+                valueToken += escapeMap[element]; // Add mapped escape character.
             } else {
                 throw new Error(`Invalid escape sequence: \\${element}`);
             }
-            isEscaped = false;
+            isEscaped = false; // Escape sequence handled.
         }
 
+        // Handle general characters.
         else {
             valueToken += element;
             let nextChar = data.charAt(i + 1);
@@ -102,19 +117,20 @@ const generateStack = (data) => {
                 whitespaces.includes(nextChar);
 
             if (!startValueToken && isTerminating) {
-                // Handle negative numbers and scientific notation as single tokens
-                stack.push(valueToken.trim());
+                stack.push(valueToken.trim()); // Push complete value token.
                 valueToken = "";
             }
         }
     }
 
+    // Check for unterminated strings.
     if (startValueToken) {
         throw new Error("Unterminated string in JSON");
     }
 
     return stack;
 };
+
 
 const primaryChecker = (tokens) => {
     if (tokens[0] === '{' || tokens[0] === '[') {
